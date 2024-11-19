@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go-Kart Game</title>
+    <style>body { margin: 0; overflow: hidden; }</style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <script>
+        const socket = new WebSocket('ws://localhost:8080');
+        let kartMeshes = {};  // Store the 3D meshes of all karts by playerId
+        let groundMesh = null;  // Store the 3D ground mesh
+        let camera, scene, renderer;
+        let playerData = { id: null, position: { x: 0, y: 1, z: 0 }, rotation: { x: 0, y: 0, z: 0 } };
+
+        socket.onopen = () => {
+            console.log('Connected to WebSocket server');
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'JOIN') {
+                // Handle a new player joining
+                playerData.id = data.playerId;
+                createKart(playerData.id, data.initialPosition);
+            }
+
+            if (data.type === 'STATE_UPDATE') {
+                // Update the position of all players' karts
+                data.players.forEach(player => {
+                    if (player.playerId === playerData.id) {
+                        updateKart(player.playerId, player.position, player.rotation);
+                    } else {
+                        updateKart(player.playerId, player.position, player.rotation, true);
+                    }
+                });
+            }
+
+            if (data.type === 'REMOVE_KART') {
+                // A player disconnected, remove their kart
+                removeKart(data.playerId);
+            }
+        };
+
+        // Initialize Three.js scene
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Create ground in the Three.js scene
+        function createGround() {
+            let size = 100;
+            let divisions = 100;
+
+            const groundGeometry = new THREE.PlaneGeometry(size, divisions);
+            const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x7CFC00, side: THREE.DoubleSide });
+            groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
+            groundMesh.rotation.x = -Math.PI / 2;  // Rotate the ground to be flat
+            scene.add(groundMesh);
+
+
+            const gridHelper = new THREE.GridHelper(size, divisions);
+            scene.add(gridHelper);
+        }
+
+        // Create kart in the Three.js scene
+        function createKart(playerId, position) {
+            const geometry = new THREE.BoxGeometry(1, 0.5, 2);  // Kart geometry (just a box for simplicity)
+            const material = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff });
+            const kartMesh = new THREE.Mesh(geometry, material);
+            
+            kartMesh.position.set(position.x, position.y, position.z);
+            kartMeshes[playerId] = kartMesh;  // Store the kart mesh by playerId
+            scene.add(kartMesh);
+        }
+
+        // Update kart position and rotation
+        function updateKart(playerId, position, rotation, isOtherPlayer = false) {
+        if (kartMeshes[playerId]) {
+            const kartMesh = kartMeshes[playerId];
+            kartMesh.position.set(position.x, position.y, position.z);
+            kartMesh.rotation.set(rotation.x, rotation.y, rotation.z);
+        } else if (isOtherPlayer) {
+            // In case of another player, we need to create their kart if not already created
+            createKart(playerId, position);
+        }
+        }
+
+        // Remove kart from the scene (when player disconnects)
+        function removeKart(playerId) {
+            const kartMesh = kartMeshes[playerId];
+            if (kartMesh) {
+                scene.remove(kartMesh);
+                delete kartMeshes[playerId];  // Remove from our storage
+            }
+        }
+
+        // Camera follow logic
+        function updateCamera() {
+            if (kartMeshes[playerData.id]) {
+                const playerKart = kartMeshes[playerData.id];
+                camera.position.x = playerKart.position.x + 5 * Math.sin(playerKart.rotation.y);
+                camera.position.z = playerKart.position.z + 5 * Math.cos(playerKart.rotation.y);
+                camera.position.y = playerKart.position.y + 3;  // Adjust the camera height
+                camera.lookAt(playerKart.position);
+            }
+        }
+
+        // Send user input to the backend
+        let throttle = 0;
+        let steer = 0;
+
+        document.addEventListener('keydown', (event) => {
+        if (event.key === 'w') throttle = 1;
+            else if (event.key === 's') throttle = -1;
+            else if (event.key === 'a') steer = 1;
+            else if (event.key === 'd') steer = -1;
+        });
+
+        document.addEventListener('keyup', (event) => {
+            if (event.key === 'w' || event.key === 's') throttle = 0;
+            if (event.key === 'a' || event.key === 'd') steer = 0;
+        });
+
+        // Game update loop
+        function update() {
+            if (playerData.id) {
+                socket.send(JSON.stringify({
+                    type: 'MOVE',
+                    input: { throttle, steer }
+                }));
+            }
+
+            updateCamera();
+            renderer.render(scene, camera);
+            requestAnimationFrame(update);
+        }
+
+        // Create the ground when the game starts
+        createGround();
+
+        update();
+    </script>
+</body>
+</html>
