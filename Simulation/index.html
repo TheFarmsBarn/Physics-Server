@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kart Simulation</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <script type="module">
+        // import { World, RigidBodyDesc, ColliderDesc, Vector3, Quaternion } from '@dimforge/rapier3d-compat';
+        import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
+
+        import Kart from './Kart.js';
+        import Chassis from './Chassis.js';
+        import Wheel from './Wheel.js';
+
+        class RapierDebugRenderer {
+            mesh
+            world
+            enabled = true
+
+            constructor(scene, world) {
+                this.world = world
+                this.mesh = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffffff, vertexColors: true }))
+                this.mesh.frustumCulled = false
+                scene.add(this.mesh)
+            }
+
+            update() {
+                if (this.enabled) {
+                    const { vertices, colors } = this.world.debugRender()
+                    this.mesh.geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+                    this.mesh.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 4))
+                    this.mesh.visible = true
+                } else {
+                    this.mesh.visible = false
+                }
+            }
+        }
+
+        // Initialize Three.js
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Ground plane
+        const groundGeometry = new THREE.PlaneGeometry(100, 100);
+        const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x7CFC00, side: THREE.DoubleSide });
+        const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
+        groundMesh.rotation.x = -Math.PI / 2; // Rotate to make it flat
+        scene.add(groundMesh);
+
+        // Lighting
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(5, 10, 7.5);
+        scene.add(light);
+
+        // Initialize Rapier
+        RAPIER.init().then(() => {
+            let world = new RAPIER.World(new RAPIER.Vector3(0, -9.81, 0)); // Gravity
+
+            // Add ground collider
+            const groundCollider = world.createCollider(
+                RAPIER.ColliderDesc.cuboid(50, 0.1, 50), // Ground plane
+                world.createRigidBody(RAPIER.RigidBodyDesc.fixed())
+            );
+
+            // Create Kart
+            const kartPosition = { x: 0, y: 5, z: 0 };
+            const kartRotation = { x: 0, y: 0, z: 0, w: 1 };
+            const kart = new Kart(world, kartPosition, kartRotation);
+
+            // Add kart components to Three.js scene
+            const kartMesh = new THREE.Object3D();
+
+            // Add chassis
+            const chassisGeometry = new THREE.BoxGeometry(kart.chassis.width, kart.chassis.height, kart.chassis.length);
+            const chassisMaterial = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff });
+            const chassisMesh = new THREE.Mesh(chassisGeometry, chassisMaterial);
+            chassisMesh.position.set(kartPosition.x, kartPosition.y, kartPosition.z);
+            kartMesh.add(chassisMesh);
+
+            // Add wheels
+            const wheelGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 32);
+            const wheelMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const wheelMesh = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            wheelMesh.rotation.z = Math.PI / 2; // Align the wheel axis
+            const wheelPos = kart.wheelFRBody.translation();
+            wheelMesh.position.set(wheelPos.x, wheelPos.y, wheelPos.z);
+            kartMesh.add(wheelMesh);
+            // kart.wheels.forEach(wheel => {
+            //     const wheelGeometry = new THREE.CylinderGeometry(wheel.radius, wheel.radius, wheel.width, 32);
+            //     const wheelMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            //     const wheelMesh = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            //     wheelMesh.rotation.z = Math.PI / 2; // Align the wheel axis
+            //     const wheelPos = wheel.getGeometry().position;
+            //     wheelMesh.position.set(wheelPos.x, wheelPos.y, wheelPos.z);
+            //     kartMesh.add(wheelMesh);
+            // });
+
+            scene.add(kartMesh);
+
+            const rapierDebugRenderer = new RapierDebugRenderer(scene, world)
+            // const gui = new GUI()
+            // gui.add(rapierDebugRenderer, 'enabled').name('Rapier Degug Renderer')
+
+            // Camera position
+            camera.position.set(0, 10, 20);
+            camera.lookAt(0, 0, 0);
+
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+
+                // Physics update
+                world.step();
+
+                // Update chassis position and rotation
+                const chassisPos = kart.chassis.chassisBody.translation();
+                const chassisRot = kart.chassis.chassisBody.rotation();
+                chassisMesh.position.set(chassisPos.x, chassisPos.y, chassisPos.z);
+                chassisMesh.quaternion.set(chassisRot.x, chassisRot.y, chassisRot.z, chassisRot.w);
+
+                // Update wheel positions and rotations
+                // kart.wheels.forEach((wheel, index) => {
+                //     const wheelMesh = kartMesh.children[index + 1]; // Assuming chassis is first
+                //     const wheelPos = wheel.wheelBody.translation();
+                //     const wheelRot = wheel.wheelBody.rotation();
+                //     wheelMesh.position.set(wheelPos.x, wheelPos.y, wheelPos.z);
+                //     wheelMesh.quaternion.set(wheelRot.x, wheelRot.y, wheelRot.z, wheelRot.w);
+                // });
+
+                
+                const wheelMesh = kartMesh.children[1]; // Assuming chassis is first
+                const wheelPos = kart.wheelFRBody.translation();
+                const wheelRot = kart.wheelFRBody.rotation();
+                wheelMesh.position.set(wheelPos.x, wheelPos.y, wheelPos.z);
+                wheelMesh.quaternion.set(wheelRot.x, wheelRot.y, wheelRot.z, wheelRot.w);
+
+                // Render the scene
+                renderer.render(scene, camera);
+
+                rapierDebugRenderer.update()
+
+            }
+            animate();
+        });
+
+
+        function render(world) {
+            const { vertices, colors } = world.debugRender();
+
+            this.lines.clear();
+
+            for (let i = 0; i < vertices.length / 4; i += 1) {
+                let color = PIXI.utils.rgb2hex([
+                    colors[i * 8],
+                    colors[i * 8 + 1],
+                    colors[i * 8 + 2],
+                ]);
+                this.lines.lineStyle(1.0, color, colors[i * 8 + 3], 0.5, true);
+                this.lines.moveTo(vertices[i * 4], -vertices[i * 4 + 1]);
+                this.lines.lineTo(vertices[i * 4 + 2], -vertices[i * 4 + 3]);
+            }
+
+            this.renderer.render(this.scene);
+        }
+    </script>
+</body>
+</html>

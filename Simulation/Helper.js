@@ -12,6 +12,12 @@ class Helper {
     static scale(Rapier, vector, scaler) {
         return new Rapier.Vector3(vector.x * scaler, vector.y * scaler, vector.z * scaler);
     }
+
+    // Static method for linear interpolation
+    static lerp(start, end, t) {
+        return start + (end - start) * t;
+    }
 }
 
 module.exports = Helper;
+export default Helper;

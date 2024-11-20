@@ -1,8 +1,9 @@
-const Rapier = require("@dimforge/rapier3d-compat");
-const GameObject = require('./GameObject');
+import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
+
+import GameObject from './GameObject.js';
 
 class Wheel extends GameObject {
-    constructor(world, position = { x: 0, y: 5, z: 0 }, rotation = { x: 0, y: 0, z: 0, w: 1 }, radius = 0.2, width = 0.4) {
+    constructor(world, position = { x: 0, y: 5, z: 0 }, rotation = { x: 0, y: 0, z: 0, w: 1 }, radius = 0.2, width = 0.1) {
         super(position, rotation);
 
         this.radius = radius;
@@ -10,10 +11,10 @@ class Wheel extends GameObject {
 
         // Create wheel rigid body and collider
         this.wheelBody = world.createRigidBody(
-            Rapier.RigidBodyDesc.dynamic().setTranslation(position.x, position.y, position.z)
+            RAPIER.RigidBodyDesc.dynamic().setTranslation(position.x, position.y, position.z).setRotation(rotation)
         );
         this.wheelCollider = world.createCollider(
-            Rapier.ColliderDesc.cylinder(this.radius, this.width),
+            RAPIER.ColliderDesc.cylinder(this.width, this.radius),
             this.wheelBody
         );
     }
@@ -40,4 +41,4 @@ class Wheel extends GameObject {
     }
 }
 
-module.exports = Wheel;
+export default Wheel;

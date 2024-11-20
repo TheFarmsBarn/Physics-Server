@@ -10,6 +10,9 @@
 <body>
     <script>
         const socket = new WebSocket('ws://localhost:8080');
+
+        const lerp = (start, end, t) => start + (end - start) * t;
+
         let kartMeshes = {};  // Store the 3D meshes of all karts by playerId
         let groundMesh = null;  // Store the 3D ground mesh
         let camera, scene, renderer;
@@ -143,14 +146,33 @@
             }
         }
 
-        // Camera follow logic
         function updateCamera() {
             if (kartMeshes[playerData.id]) {
                 const playerKart = kartMeshes[playerData.id];
-                camera.position.x = playerKart.position.x + 20 * Math.sin(playerKart.rotation.y);
-                camera.position.z = playerKart.position.z + 20 * Math.cos(playerKart.rotation.y);
-                camera.position.y = playerKart.position.y + 10;  // Adjust the camera height
-                camera.lookAt(playerKart.position);
+                const chassisMesh = playerKart.children.find(child => child.uuid === 'chassis_' + playerData.id);  // Find chassis by uuid
+
+                const targetPosition = {
+                    x: chassisMesh.position.x + 20 * Math.sin(chassisMesh.rotation.y),
+                    z: chassisMesh.position.z + 20 * Math.cos(chassisMesh.rotation.y),
+                    y: chassisMesh.position.y + 10
+                };
+
+                // Lerp the camera position
+                camera.position.x = lerp(camera.position.x, targetPosition.x, 0.1);  // Adjust 0.1 for smoother or faster movement
+                camera.position.z = lerp(camera.position.z, targetPosition.z, 0.1);
+                camera.position.y = lerp(camera.position.y, targetPosition.y, 0.1);
+
+                // Make the camera look at the kart smoothly
+                const targetLookAt = new THREE.Vector3(
+                    chassisMesh.position.x,
+                    chassisMesh.position.y,
+                    chassisMesh.position.z
+                );
+
+                const currentLookAt = new THREE.Vector3();
+                camera.getWorldDirection(currentLookAt);
+                currentLookAt.lerp(targetLookAt, 0.1);  // Adjust 0.1 for smoother or faster orientation change
+                camera.lookAt(currentLookAt);
             }
         }
 

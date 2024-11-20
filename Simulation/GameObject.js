@@ -15,4 +15,4 @@ class GameObject {
     }
 }
 
-module.exports = GameObject;
+export default GameObject;
