@@ -4,5 +4,5 @@ const WSServer = require("./WSServer.js");
 // once init has completed Rapier should function the same as in the browser
 Rapier.init()
 	.then(() => {
-    let wsServer = new WSServer(Rapier);
+    let wsServer = new WSServer();
   });

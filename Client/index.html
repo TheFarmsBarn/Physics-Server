@@ -25,17 +25,20 @@
             if (data.type === 'JOIN') {
                 // Handle a new player joining
                 playerData.id = data.playerId;
-                createKart(playerData.id, data.initialPosition);
+                createKart(playerData.id, data.geometry);  // Use geometry directly
             }
 
             if (data.type === 'STATE_UPDATE') {
-                // Update the position of all players' karts
+                // Update the position, rotation, and geometry of all players' karts
                 data.players.forEach(player => {
                     if (player.playerId === playerData.id) {
-                        updateKart(player.playerId, player.position, player.rotation);
-                    } else {
-                        updateKart(player.playerId, player.position, player.rotation, true);
+                        // Update this player's kart using the full geometry object
+                        updateKart(player.playerId, player.geometry);
                     }
+                    // else {
+                    //     // For other players, update their kart as well
+                    //     updateKart(player.playerId, player.geometry, true);
+                    // }
                 });
             }
 
@@ -63,33 +66,73 @@
             groundMesh.rotation.x = -Math.PI / 2;  // Rotate the ground to be flat
             scene.add(groundMesh);
 
-
             const gridHelper = new THREE.GridHelper(size, divisions);
             scene.add(gridHelper);
         }
 
-        // Create kart in the Three.js scene
-        function createKart(playerId, position) {
-            const geometry = new THREE.BoxGeometry(1, 0.5, 2);  // Kart geometry (just a box for simplicity)
-            const material = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff });
-            const kartMesh = new THREE.Mesh(geometry, material);
-            
-            kartMesh.position.set(position.x, position.y, position.z);
+        function createKart(playerId, geometry) {
+            // Create an empty parent object for the kart
+            const kartMesh = new THREE.Object3D();  // Create a parent object to group the chassis and wheels
+
+            // Create the chassis from geometry data
+            const chassisData = geometry.chassis;
+            const chassisGeometry = new THREE.BoxGeometry(chassisData.length, chassisData.height, chassisData.width);
+            const chassisMaterial = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff });
+            const chassisMesh = new THREE.Mesh(chassisGeometry, chassisMaterial);
+            chassisMesh.position.set(chassisData.position.x, chassisData.position.y, chassisData.position.z);
+            chassisMesh.rotation.set(chassisData.rotation.x, chassisData.rotation.y, chassisData.rotation.z);  // Apply rotation
+            kartMesh.add(chassisMesh);  // Add the chassis to the kart
+
+            // Store the chassis UUID to reference later
+            chassisMesh.uuid = 'chassis_' + playerId; // Assign a unique uuid for the chassis
+
+            // Create the wheels from geometry data
+            geometry.wheels.forEach(wheelData => {
+                const wheelGeometry = new THREE.CylinderGeometry(wheelData.radius, wheelData.radius, wheelData.width, 32);
+                const wheelMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+                const wheelMesh = new THREE.Mesh(wheelGeometry, wheelMaterial);
+                wheelMesh.rotation.x = Math.PI / 2;  // Align the wheel correctly
+                wheelMesh.position.set(wheelData.position.x, wheelData.position.y, wheelData.position.z);
+                wheelMesh.rotation.set(wheelData.rotation.x, wheelData.rotation.y, wheelData.rotation.z);  // Apply wheel rotation
+                kartMesh.add(wheelMesh);  // Add the wheel to the kart
+
+                // Store the wheel's uuid to reference later
+                wheelMesh.uuid = 'wheel_' + playerId + '_' + geometry.wheels.indexOf(wheelData); // Assign a unique uuid for each wheel
+            });
+
             kartMeshes[playerId] = kartMesh;  // Store the kart mesh by playerId
-            scene.add(kartMesh);
+            scene.add(kartMesh);  // Add the kart to the scene
         }
 
-        // Update kart position and rotation
-        function updateKart(playerId, position, rotation, isOtherPlayer = false) {
-        if (kartMeshes[playerId]) {
-            const kartMesh = kartMeshes[playerId];
-            kartMesh.position.set(position.x, position.y, position.z);
-            kartMesh.rotation.set(rotation.x, rotation.y, rotation.z);
-        } else if (isOtherPlayer) {
-            // In case of another player, we need to create their kart if not already created
-            createKart(playerId, position);
+
+
+        // Update kart position, rotation, and wheel rotation
+        function updateKart(playerId, geometry, isOtherPlayer = false) {
+            if (kartMeshes[playerId]) {
+                const kartMesh = kartMeshes[playerId];
+
+                // Update chassis position and rotation from the geometry object
+                const chassisData = geometry.chassis;
+                const chassisMesh = kartMesh.children.find(child => child.uuid === 'chassis_' + playerId);  // Find chassis by uuid
+                if (chassisMesh) {
+                    chassisMesh.position.set(chassisData.position.x, chassisData.position.y, chassisData.position.z);
+                    chassisMesh.rotation.set(chassisData.rotation.x, chassisData.rotation.y, chassisData.rotation.z);
+                }
+
+                // Update the wheels' position and rotation based on the geometry of each wheel
+                geometry.wheels.forEach((wheelData, index) => {
+                    const wheelMesh = kartMesh.children.find(child => child.uuid === 'wheel_' + playerId + '_' + index);  // Find wheel by uuid
+                    if (wheelMesh) {
+                        wheelMesh.position.set(wheelData.position.x, wheelData.position.y, wheelData.position.z);
+                        wheelMesh.rotation.set(wheelData.rotation.x, wheelData.rotation.y, wheelData.rotation.z);
+                    }
+                });
+            } else if (isOtherPlayer) {
+                // If it's another player, we need to create their kart if not already created
+                createKart(playerId, geometry);
+            }
         }
-        }
+
 
         // Remove kart from the scene (when player disconnects)
         function removeKart(playerId) {
@@ -104,9 +147,9 @@
         function updateCamera() {
             if (kartMeshes[playerData.id]) {
                 const playerKart = kartMeshes[playerData.id];
-                camera.position.x = playerKart.position.x + 5 * Math.sin(playerKart.rotation.y);
-                camera.position.z = playerKart.position.z + 5 * Math.cos(playerKart.rotation.y);
-                camera.position.y = playerKart.position.y + 3;  // Adjust the camera height
+                camera.position.x = playerKart.position.x + 20 * Math.sin(playerKart.rotation.y);
+                camera.position.z = playerKart.position.z + 20 * Math.cos(playerKart.rotation.y);
+                camera.position.y = playerKart.position.y + 10;  // Adjust the camera height
                 camera.lookAt(playerKart.position);
             }
         }
@@ -116,7 +159,7 @@
         let steer = 0;
 
         document.addEventListener('keydown', (event) => {
-        if (event.key === 'w') throttle = 1;
+            if (event.key === 'w') throttle = 1;
             else if (event.key === 's') throttle = -1;
             else if (event.key === 'a') steer = 1;
             else if (event.key === 'd') steer = -1;
