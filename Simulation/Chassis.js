@@ -1,5 +1,4 @@
 const Rapier = require("@dimforge/rapier3d-compat");
-
 const GameObject = require('./GameObject');
 
 class Chassis extends GameObject {
@@ -14,7 +13,7 @@ class Chassis extends GameObject {
         this.chassisBody = world.createRigidBody(
             Rapier.RigidBodyDesc.dynamic().setTranslation(position.x, position.y, position.z)
         );
-        const chassisCollider = world.createCollider(
+        this.chassisCollider = world.createCollider(
             Rapier.ColliderDesc.cuboid(this.width / 2, this.height / 2, this.length / 2),
             this.chassisBody
         );
@@ -30,6 +29,16 @@ class Chassis extends GameObject {
             height: this.height,
             length: this.length
         };
+    }
+
+    // Cleanup method to remove the chassis body and collider from the world
+    cleanup(world) {
+        if (this.chassisBody) {
+            world.removeRigidBody(this.chassisBody);  // Remove the chassis body from the world
+        }
+        if (this.chassisCollider) {
+            world.removeCollider(this.chassisCollider);  // Remove the chassis collider from the world
+        }
     }
 }
 

@@ -1,5 +1,4 @@
 const Rapier = require("@dimforge/rapier3d-compat");
-
 const GameObject = require('./GameObject');
 
 class Wheel extends GameObject {
@@ -13,7 +12,7 @@ class Wheel extends GameObject {
         this.wheelBody = world.createRigidBody(
             Rapier.RigidBodyDesc.dynamic().setTranslation(position.x, position.y, position.z)
         );
-        const wheelCollider = world.createCollider(
+        this.wheelCollider = world.createCollider(
             Rapier.ColliderDesc.cylinder(this.radius, this.width),
             this.wheelBody
         );
@@ -28,6 +27,16 @@ class Wheel extends GameObject {
             radius: this.radius,
             width: this.width
         };
+    }
+
+    // Cleanup method to remove the wheel body and collider from the world
+    cleanup(world) {
+        if (this.wheelBody) {
+            world.removeRigidBody(this.wheelBody);  // Remove the wheel body from the world
+        }
+        if (this.wheelCollider) {
+            world.removeCollider(this.wheelCollider);  // Remove the wheel collider from the world
+        }
     }
 }
 

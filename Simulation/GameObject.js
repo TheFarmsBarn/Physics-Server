@@ -8,6 +8,11 @@ class GameObject {
     getGeometry() {
         return [];  // Default returns an empty array
     }
+
+    // Cleanup method for derived classes to override if necessary
+    cleanup(world) {
+        // This method can be overridden in derived classes (e.g., Chassis, Wheel)
+    }
 }
 
 module.exports = GameObject;

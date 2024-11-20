@@ -67,7 +67,16 @@ class WSServer {
 
             // Handle player disconnect
             ws.on('close', () => {
-                delete this.players[playerId];  // Remove player data
+                // Access the player's kart and clean up all components
+                const player = this.players[playerId];
+                if (player && player.kart) {
+                    player.kart.cleanup(this.world);  // Clean up the kart, which will handle chassis and wheels
+                }
+            
+                // Remove player data
+                delete this.players[playerId]; 
+                delete this.inputs[playerId];
+            
                 console.log(`Player ${playerId} disconnected`);
                 this.broadcastState();
             });
