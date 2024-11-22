@@ -2,23 +2,83 @@ import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
 
 import GameObject from './GameObject.js';
 
+import GlobalMath from './MathUtils/GlobalMath.js';
+import { Vector3 } from './MathUtils/Vector3.js';
+import { Quaternion } from './MathUtils/Quaternion.js';
+const Vector3Static = new Vector3();
+
 class Wheel extends GameObject {
-    constructor(world, position = { x: 0, y: 5, z: 0 }, rotation = { x: 0, y: 0, z: 0, w: 1 }, radius = 0.2, width = 0.1) {
+    constructor(world, position = { x: 0, y: 0, z: 0 }, rotation = { x: 0, y: 0, z: 0, w: 1 }, side = 1, axleSize = 0.1, radius = 0.3, width = 0.1) {
         super(position, rotation);
 
         this.radius = radius;
         this.width = width;
+        this.side = side;
+        this.axleSize = axleSize;
 
-        // Create wheel rigid body and collider
-        this.wheelBody = world.createRigidBody(
-            RAPIER.RigidBodyDesc.dynamic().setTranslation(position.x, position.y, position.z).setRotation(rotation)
+
+        const parentPosition = new Vector3(position.x, position.y, position.z);
+        const parentRotation = new Quaternion(rotation.x, rotation.y, rotation.z, rotation.w);
+        
+        let axleLocalPosition = new Vector3(this.side * axleSize * 2, 0, 0);
+        let axleLocalRotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+        let axleGlobalPosition = GlobalMath.getGlobalPosition(parentPosition, parentRotation, axleLocalPosition);
+        let axleGlobalRotation = GlobalMath.getGlobalRotation(parentRotation, axleLocalRotation);
+
+        this.axleBody = world.createRigidBody(
+            RAPIER.RigidBodyDesc.dynamic()
+                .setTranslation(axleGlobalPosition.x, axleGlobalPosition.y, axleGlobalPosition.z)
+                .setRotation(axleGlobalRotation)
+                .setCanSleep(false)
         );
+
+        this.axleCollider = world.createCollider(
+            RAPIER.ColliderDesc.cuboid(this.axleSize/2, this.axleSize/2, this.axleSize/2)
+                .setRotation(new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2))
+                .setMass(0.1),
+            this.axleBody
+        );       
+        
+        let wheelLocalPosition = Vector3Static.addVectors(axleLocalPosition, new Vector3(this.side * this.width, 0, 0));
+        let wheelLocalRotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+        let wheelGlobalPosition = GlobalMath.getGlobalPosition(parentPosition, parentRotation, wheelLocalPosition);
+        let wheelGlobalRotation = GlobalMath.getGlobalRotation(parentRotation, wheelLocalRotation);
+                
+        this.wheelBody = world.createRigidBody(
+            RAPIER.RigidBodyDesc.dynamic()
+                .setTranslation(wheelGlobalPosition.x, wheelGlobalPosition.y, wheelGlobalPosition.z)
+                .setRotation(wheelGlobalRotation)
+                .setCanSleep(false)
+        );
+
         this.wheelCollider = world.createCollider(
-            RAPIER.ColliderDesc.cylinder(this.width, this.radius),
+            RAPIER.ColliderDesc.cylinder(this.width, this.radius)
+            .setTranslation(wheelLocalPosition.x, wheelLocalPosition.y, wheelLocalPosition.z)
+                .setRotation(new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2))
+                .setMass(1)
+                .setRestitution(0.5)
+                .setFriction(2.5),
             this.wheelBody
         );
-    }
 
+        // this.wheelFRAxle.configureMotorModel(RAPIER.MotorModel.ForceBased);
+        world.createImpulseJoint(
+            RAPIER.JointData.revolute(new RAPIER.Vector3(0, 0, 0), new RAPIER.Vector3(0, 0, 0), new RAPIER.Vector3(1, 0, 0)),
+            this.axleBody,
+            this.wheelBody,
+            true
+        )
+    }
+    attachAxle(world, body, localPositionOnBody, rotationRestriction) {
+        let axleLocalPosition = new Vector3( -1 * this.side  * this.axleSize * 2, 0, 0);
+
+        this.steerJoint = world.createImpulseJoint(
+            RAPIER.JointData.revolute(localPositionOnBody, axleLocalPosition, rotationRestriction),
+            body,
+            this.axleBody,
+            true
+        );
+    }
     // Get the geometry of the wheel (position, radius, width, and rotation)
     getGeometry() {
         return {

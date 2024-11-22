@@ -3,10 +3,14 @@ import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
 import GameObject from './GameObject.js';
 import Chassis from './Chassis.js';
 import Wheel from './Wheel.js';
-import Quaternion from './quaternion.js';
+
+import GlobalMath from './MathUtils/GlobalMath.js';
+import { Vector3 } from './MathUtils/Vector3.js';
+import { Quaternion } from './MathUtils/Quaternion.js';
+const Vector3Static = new Vector3();
 
 class Kart extends GameObject {
-    constructor(world, position = { x: 0, y: 5, z: 0 }, rotation = { x: 0, y: 0, z: 0, w: 1 }, height = 1.5, width = 2.5, length = 5) {
+    constructor(world, position = { x: 0, y: 5, z: 0 }, rotation = { x: 0, y: 0, z: 0, w: 1 }, height = 1, width = 1, length = 2) {
         super(position, rotation);
 
         this.height = height;
@@ -15,69 +19,51 @@ class Kart extends GameObject {
 
         this.chassis = new Chassis(world, position, rotation, width, height, length); // Create the chassis
         this.wheels = [];
-        // this.joints = [];
 
-        // Calculate wheel positions and create the wheel objects
-        let wheelWidth = 0.1
-        let wheelRadius = 0.3
+        let axleSize = 0.1;
+        let wheelWidth = 0.1;
+        let wheelRadius = 0.3;
 
-        let frontRightPosition = new RAPIER.Vector3(this.width / 2 + 0.05, this.height / 2, this.length / 2);
-        this.axelFRBody = world.createRigidBody(
-            RAPIER.RigidBodyDesc.dynamic()
-                .setTranslation(frontRightPosition.x, frontRightPosition.y, frontRightPosition.z)
-                .setCanSleep(false)
-        )
-        this.wheelFRBody = world.createRigidBody(
-            RAPIER.RigidBodyDesc.dynamic()
-                .setTranslation(frontRightPosition.x, frontRightPosition.y, frontRightPosition.z)
-                .setCanSleep(false)
-        );
+        const parentPosition = new Vector3(position.x, position.y, position.z);
+        const parentRotation = new Quaternion(rotation.x, rotation.y, rotation.z, rotation.w);
 
-        this.wheelFRShape = RAPIER.ColliderDesc.cylinder(0.1, 0.3)
-            .setRotation(Quaternion.fromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2))
-            .setTranslation(0.2, 0, 0)
-            .setRestitution(0.5)
-            .setFriction(2.5);
+        let frontLeftWheelLocalPosition = new Vector3(this.width / 2, -this.height / 2, this.length / 2);
+        let frontLeftWheelLocalRotation = new Quaternion();
 
-        this.axelFRShape = RAPIER.ColliderDesc.cuboid(0.1, 0.1, 0.1)
-            .setRotation(Quaternion.fromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2))
-            .setMass(0.1)
+        let frontLeftWheelGlobalPosition = GlobalMath.getGlobalPosition(parentPosition, parentRotation, frontLeftWheelLocalPosition);
+        let frontLeftWheelGlobalRotation = GlobalMath.getGlobalRotation(parentRotation, frontLeftWheelLocalRotation);
 
-        this.wheelFRAxel = world.createImpulseJoint(
-            RAPIER.JointData.revolute(frontRightPosition, new RAPIER.Vector3(0, 0, 0), new RAPIER.Vector3(0, 1, 0)),
-            this.chassis.chassisBody,
-            this.axelFRBody,
-            true
-        )
-        this.wheelFRAxel.configureMotorModel(RAPIER.MotorModel.ForceBased);
+        this.frontLeftWheel = new Wheel(world, frontLeftWheelGlobalPosition, frontLeftWheelGlobalRotation, 1, axleSize, wheelRadius, wheelWidth);
+        this.frontLeftWheel.attachAxle(world, this.chassis.chassisBody, frontLeftWheelLocalPosition, new RAPIER.Vector3(0, 1, 0));
+        
+        let backLeftWheelLocalPosition = new Vector3(this.width / 2, -this.height / 2, -this.length / 2);
+        let backLeftWheelLocalRotation = new Quaternion();
 
+        let backLeftWheelGlobalPosition = GlobalMath.getGlobalPosition(parentPosition, parentRotation, backLeftWheelLocalPosition);
+        let backLeftWheelGlobalRotation = GlobalMath.getGlobalRotation(parentRotation, backLeftWheelLocalRotation);
 
-        world.createImpulseJoint(
-            RAPIER.JointData.revolute(new RAPIER.Vector3(0, 0, 0), new RAPIER.Vector3(0, 0, 0), new RAPIER.Vector3(1, 0, 0)),
-            this.axelFRBody,
-            this.wheelFRBody,
-            true
-        )
+        this.backLeftWheel = new Wheel(world, backLeftWheelGlobalPosition, backLeftWheelGlobalRotation, 1, axleSize, wheelRadius, wheelWidth);
+        this.backLeftWheel.attachAxle(world, this.chassis.chassisBody, backLeftWheelLocalPosition, new RAPIER.Vector3(0, 1, 0));
+        
+        let frontRightWheelLocalPosition = new Vector3(-this.width / 2, -this.height / 2, this.length / 2);
+        let frontRightWheelLocalRotation = new Quaternion();
 
-        world.createCollider(this.wheelFRShape, this.wheelFRBody)
-        world.createCollider(this.axelFRShape, this.axelFRBody)
+        let frontRightWheelGlobalPosition = GlobalMath.getGlobalPosition(parentPosition, parentRotation, frontRightWheelLocalPosition);
+        let frontRightWheelGlobalRotation = GlobalMath.getGlobalRotation(parentRotation, frontRightWheelLocalRotation);
 
-            // .setCollisionGroups(262145)
-        // this.frontRightWheel = new Wheel(
-        //     world,
-        //     frontRightPosition,
-        //     { x: 1, y: 0, z: 0, w: 1 },
-        //     wheelRadius,
-        //     wheelWidth
-        // );
-        // let joint = RAPIER.JointData.revolute(
-        //     this.frontRightWheel.position,
-        //     { x: 0.0, y: 0.0, z: 0.0 },
-        //     { x: -1, y: 0.0, z: 0.0 }
-        // );
-        // world.createImpulseJoint(joint, this.chassis.chassisBody, this.frontRightWheel.wheelBody, true)
+        this.frontRightWheel = new Wheel(world, frontRightWheelGlobalPosition, frontRightWheelGlobalRotation, -1, axleSize, wheelRadius, wheelWidth);
+        this.frontRightWheel.attachAxle(world, this.chassis.chassisBody, frontRightWheelLocalPosition, new RAPIER.Vector3(0, 1, 0));
+        
+        let backRightWheelLocalPosition = new Vector3(-this.width / 2, -this.height / 2, -this.length / 2);
+        let backRightWheelLocalRotation = new Quaternion();
 
+        let backRightWheelGlobalPosition = GlobalMath.getGlobalPosition(parentPosition, parentRotation, backRightWheelLocalPosition);
+        let backRightWheelGlobalRotation = GlobalMath.getGlobalRotation(parentRotation, backRightWheelLocalRotation);
 
+        this.backRightWheel = new Wheel(world, backRightWheelGlobalPosition, backRightWheelGlobalRotation, -1, axleSize, wheelRadius, wheelWidth);
+        this.backRightWheel.attachAxle(world, this.chassis.chassisBody, backRightWheelLocalPosition, new RAPIER.Vector3(0, 1, 0));
+
+        
         // const wheels = [
         //     {
         //         position: { x: -this.width / 2 - wheelWidth*1.1, y: -this.height / 2, z: this.length / 2 },
@@ -105,14 +91,6 @@ class Kart extends GameObject {
         //     }
         // ];
 
-        // this.carBody = world.createRigidBody(
-        //     RigidBodyDesc.dynamic()
-        //         .setTranslation(...position)
-        //         .setCanSleep(false)
-        // )    
-
-        // // world.createCollider(carShape, this.carBody)
-        // world.createCollider(wheelFRShape, wheelFRBody)
     }
 
     // Get all geometries for the kart (flat array including position and rotation)
