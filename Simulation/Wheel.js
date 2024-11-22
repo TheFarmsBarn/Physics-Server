@@ -53,9 +53,8 @@ class Wheel extends GameObject {
 
         this.wheelCollider = world.createCollider(
             RAPIER.ColliderDesc.cylinder(this.width, this.radius)
-            .setTranslation(wheelLocalPosition.x, wheelLocalPosition.y, wheelLocalPosition.z)
+                .setTranslation(wheelLocalPosition.x, wheelLocalPosition.y, wheelLocalPosition.z)
                 .setRotation(new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2))
-                .setMass(1)
                 .setRestitution(0.5)
                 .setFriction(2.5),
             this.wheelBody
@@ -68,17 +67,36 @@ class Wheel extends GameObject {
             true
         )
         this.moterJoint.configureMotorModel(RAPIER.MotorModel.ForceBased)
+        // this.moterJoint.setLimits(0, 0);
 
     }
-    attachAxle(world, body, localPositionOnBody, rotationRestriction) {
-        let axleLocalPosition = new Vector3( -1 * this.side  * this.axleSize * 2, 0, 0);
-
+    attachAxle(world, body, localPositionOnBody, rotationRestriction, allowSteering = true, maxSteerAngle = Math.PI / 6) {
+        const axleLocalPosition = new Vector3(-1 * this.side * this.axleSize * 2, 0, 0);
         this.steerJoint = world.createImpulseJoint(
             RAPIER.JointData.revolute(localPositionOnBody, axleLocalPosition, rotationRestriction),
             body,
             this.axleBody,
             true
         );
+
+
+        let minLimit = 0;
+        let maxLimit = 0;
+        if (allowSteering) {
+            minLimit = -maxSteerAngle;
+            maxLimit = maxSteerAngle;
+        }
+
+
+        this.steerJoint.setLimits(minLimit, maxLimit);
+        this.steerJoint.configureMotorPosition(0, 100, 10)
+    }
+    setMotorVelocity(velocity) {
+        console.log(velocity);
+        this.moterJoint.configureMotorVelocity(velocity, 10.0); // 10.0 is the motor force
+    }
+    setSteeringAngle(targetSteer) {
+        this.steerJoint.configureMotorPosition(targetSteer, 100, 10)
     }
     // Get the geometry of the wheel (position, radius, width, and rotation)
     getGeometry() {

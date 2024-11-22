@@ -79,6 +79,27 @@
             // Add kart components to Three.js scene
             const kartMesh = new THREE.Object3D();
 
+            document.addEventListener('keydown', (event) => {
+                console.log
+                const steeringAngleIncrement = 0.1; // Adjust as needed
+                const velocityIncrement = 1.0;     // Adjust as needed
+
+                switch (event.key) {
+                    case 'ArrowUp': // Increase velocity
+                        kart.setWheelVelocity(kart.currentVelocity + velocityIncrement);
+                        break;
+                    case 'ArrowDown': // Decrease velocity
+                        kart.setWheelVelocity(kart.currentVelocity - velocityIncrement);
+                        break;
+                    case 'ArrowLeft': // Turn left
+                        kart.setSteeringAngle(kart.currentSteeringAngle - steeringAngleIncrement);
+                        break;
+                    case 'ArrowRight': // Turn right
+                        kart.setSteeringAngle(kart.currentSteeringAngle + steeringAngleIncrement);
+                        break;
+                }
+            });
+
             // // Add chassis
             // const chassisGeometry = new THREE.BoxGeometry(kart.chassis.width, kart.chassis.height, kart.chassis.length);
             // const chassisMaterial = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff });
@@ -113,7 +134,7 @@
             // gui.add(rapierDebugRenderer, 'enabled').name('Rapier Degug Renderer')
 
             // Camera position
-
+        
             camera.position.set(10, 5, 10);
             camera.lookAt(0, 0, 0);
 
@@ -179,6 +200,7 @@
 
             this.renderer.render(this.scene);
         }
+
     </script>
 </body>
 </html>

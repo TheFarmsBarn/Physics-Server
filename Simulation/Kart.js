@@ -24,11 +24,14 @@ class Kart extends GameObject {
         let wheelWidth = 0.1;
         let wheelRadius = 0.3;
 
+        this.currentVelocity = 0;
+        this.currentSteeringAngle = 0;
+
         const parentPosition = new Vector3(position.x, position.y, position.z);
         const parentRotation = new Quaternion(rotation.x, rotation.y, rotation.z, rotation.w);
 
         let frontLeftWheelLocalPosition = new Vector3(this.width / 2, -this.height / 2, this.length / 2);
-        let frontLeftWheelLocalRotation = new Quaternion();
+        let frontLeftWheelLocalRotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -Math.PI / 2);
 
         let frontLeftWheelGlobalPosition = GlobalMath.getGlobalPosition(parentPosition, parentRotation, frontLeftWheelLocalPosition);
         let frontLeftWheelGlobalRotation = GlobalMath.getGlobalRotation(parentRotation, frontLeftWheelLocalRotation);
@@ -37,16 +40,16 @@ class Kart extends GameObject {
         this.frontLeftWheel.attachAxle(world, this.chassis.chassisBody, frontLeftWheelLocalPosition, new RAPIER.Vector3(0, 1, 0));
         
         let backLeftWheelLocalPosition = new Vector3(this.width / 2, -this.height / 2, -this.length / 2);
-        let backLeftWheelLocalRotation = new Quaternion();
+        let backLeftWheelLocalRotation = new Quaternion();//.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
 
         let backLeftWheelGlobalPosition = GlobalMath.getGlobalPosition(parentPosition, parentRotation, backLeftWheelLocalPosition);
         let backLeftWheelGlobalRotation = GlobalMath.getGlobalRotation(parentRotation, backLeftWheelLocalRotation);
 
         this.backLeftWheel = new Wheel(world, backLeftWheelGlobalPosition, backLeftWheelGlobalRotation, 1, axleSize, wheelRadius, wheelWidth);
-        this.backLeftWheel.attachAxle(world, this.chassis.chassisBody, backLeftWheelLocalPosition, new RAPIER.Vector3(0, 1, 0));
+        this.backLeftWheel.attachAxle(world, this.chassis.chassisBody, backLeftWheelLocalPosition, new RAPIER.Vector3(0, 1, 0), false);
         
         let frontRightWheelLocalPosition = new Vector3(-this.width / 2, -this.height / 2, this.length / 2);
-        let frontRightWheelLocalRotation = new Quaternion();
+        let frontRightWheelLocalRotation = new Quaternion();//.setFromAxisAngle(new THREE.Vector3(0, 0, 1), -Math.PI / 2);
 
         let frontRightWheelGlobalPosition = GlobalMath.getGlobalPosition(parentPosition, parentRotation, frontRightWheelLocalPosition);
         let frontRightWheelGlobalRotation = GlobalMath.getGlobalRotation(parentRotation, frontRightWheelLocalRotation);
@@ -55,41 +58,13 @@ class Kart extends GameObject {
         this.frontRightWheel.attachAxle(world, this.chassis.chassisBody, frontRightWheelLocalPosition, new RAPIER.Vector3(0, 1, 0));
         
         let backRightWheelLocalPosition = new Vector3(-this.width / 2, -this.height / 2, -this.length / 2);
-        let backRightWheelLocalRotation = new Quaternion();
+        let backRightWheelLocalRotation = new Quaternion();//.setFromAxisAngle(new THREE.Vector3(0, 0, 1), -Math.PI / 2);
 
         let backRightWheelGlobalPosition = GlobalMath.getGlobalPosition(parentPosition, parentRotation, backRightWheelLocalPosition);
         let backRightWheelGlobalRotation = GlobalMath.getGlobalRotation(parentRotation, backRightWheelLocalRotation);
 
         this.backRightWheel = new Wheel(world, backRightWheelGlobalPosition, backRightWheelGlobalRotation, -1, axleSize, wheelRadius, wheelWidth);
-        this.backRightWheel.attachAxle(world, this.chassis.chassisBody, backRightWheelLocalPosition, new RAPIER.Vector3(0, 1, 0));
-
-        
-        // const wheels = [
-        //     {
-        //         position: { x: -this.width / 2 - wheelWidth*1.1, y: -this.height / 2, z: this.length / 2 },
-        //         width: wheelWidth,
-        //         radius: wheelRadius,
-        //         axis: { x: -1, y: 0.0, z: 0.0 }
-        //     },
-        //     {
-        //         position: { x: this.width / 2 + wheelWidth*1.1, y: -this.height / 2, z: this.length / 2 },
-        //         width: wheelWidth,
-        //         radius: wheelRadius,
-        //         axis: { x: -1, y: 0.0, z: 0.0 }
-        //     },
-        //     {
-        //         position: { x: -this.width / 2 - wheelWidth*1.1, y: -this.height / 2, z: -this.length / 2 },
-        //         width: wheelWidth,
-        //         radius: wheelRadius,
-        //         axis: { x: 1, y: 0.0, z: 0.0 }
-        //     },
-        //     {
-        //         position: { x: this.width / 2 + wheelWidth*1.1, y: -this.height / 2, z: -this.length / 2 },
-        //         width: wheelWidth,
-        //         radius: wheelRadius,
-        //         axis: { x: 1, y: 0.0, z: 0.0 }
-        //     }
-        // ];
+        this.backRightWheel.attachAxle(world, this.chassis.chassisBody, backRightWheelLocalPosition, new RAPIER.Vector3(0, 1, 0), false);
 
     }
 
@@ -104,30 +79,24 @@ class Kart extends GameObject {
         return geometry;  // Return aggregated geometry
     }
 
+    setSteeringAngle(angle) {
 
-    // Move the kart forward
-    moveForward(force) {
-        // const forwardForce = { x: 0, y: 0, z: -force };
-        // this.chassisBody.addForce(forwardForce, true);
+        const maxSteerAngle = Math.PI / 4; // 45 degrees
+        angle = Math.max(-maxSteerAngle, Math.min(maxSteerAngle, angle)); // Clamp angle
+
+        this.frontLeftWheel.setSteeringAngle(angle);
+        this.frontRightWheel.setSteeringAngle(angle);
+
+        this.currentSteeringAngle = angle;
     }
     
-    // Steer the kart
-    steer(direction) {
-        if (direction === -1) {
-            this.steeringAngle = Math.max(this.steeringAngle - this.steeringIncrement, -this.maxSteeringAngle);
-        } else if (direction === 1) {
-            this.steeringAngle = Math.min(this.steeringAngle + this.steeringIncrement, this.maxSteeringAngle);
-        } else if (direction === 0) {
-            this.steeringAngle = 0; // Reset steering
-        }
-    
-        // Adjust the orientation of the front wheel joints
-        const leftAxis = { x: Math.sin(this.steeringAngle), y: 0, z: Math.cos(this.steeringAngle) };
-        const rightAxis = { x: Math.sin(this.steeringAngle), y: 0, z: Math.cos(this.steeringAngle) };
-    
-        // Assuming front wheels are the first two in `this.wheels`
-        // this.joints[0].setAxis(leftAxis);
-        // this.joints[1].setAxis(rightAxis);
+    setWheelVelocity(velocity) {
+        this.currentVelocity = velocity;
+
+        // this.frontLeftWheel.setMotorVelocity(velocity);
+        // this.frontRightWheel.setMotorVelocity(velocity);
+        this.backLeftWheel.setMotorVelocity(velocity);
+        this.backRightWheel.setMotorVelocity(velocity);
     }
 }
 
