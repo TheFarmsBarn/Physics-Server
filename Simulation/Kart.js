@@ -93,8 +93,8 @@ class Kart extends GameObject {
     setWheelVelocity(velocity) {
         this.currentVelocity = velocity;
 
-        // this.frontLeftWheel.setMotorVelocity(velocity);
-        // this.frontRightWheel.setMotorVelocity(velocity);
+        this.frontLeftWheel.setMotorVelocity(velocity);
+        this.frontRightWheel.setMotorVelocity(velocity);
         this.backLeftWheel.setMotorVelocity(velocity);
         this.backRightWheel.setMotorVelocity(velocity);
     }
