@@ -18,6 +18,9 @@ class Kart extends GameObject {
         this.length = length;
 
         this.chassis = new Chassis(world, position, rotation, width, height, length); // Create the chassis
+        this.groundBody = null; // Track the current ground body
+        this.alignmentJoint = null; // Track the alignment joint
+
         this.wheels = [];
 
         let axleSize = 0.1;
@@ -98,6 +101,15 @@ class Kart extends GameObject {
         this.backLeftWheel.setMotorVelocity(velocity);
         this.backRightWheel.setMotorVelocity(velocity);
     }
+
+    updateGroundNormal(world, groundBody) {
+    }
+    
+    
+    
+    
+    
+    
 }
 
 export default Kart;

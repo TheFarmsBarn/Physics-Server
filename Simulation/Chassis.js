@@ -3,7 +3,7 @@ import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
 import GameObject from './GameObject.js';
 
 class Chassis extends GameObject {
-    constructor(world, position = { x: 0, y: 5, z: 0 }, rotation = { x: 0, y: 0, z: 0, w: 1 }, width = 2.5, height = 1.5, length = 5, mass = 0.5, restitution = 0.5) {
+    constructor(world, position = { x: 0, y: 5, z: 0 }, rotation = { x: 0, y: 0, z: 0, w: 1 }, width = 2.5, height = 1.5, length = 5, mass = 1, restitution = 0.5) {
         super(position);
 
         this.width = width;
@@ -22,7 +22,8 @@ class Chassis extends GameObject {
                 .setRestitution(restitution)
                 .setMass(mass),
             this.chassisBody
-        );
+        )
+        .setCollisionGroups(131073);
 
         // Add two "headlight" colliders as directional markers
         const headlightOffset = this.width / 3; // Offset for headlights from center

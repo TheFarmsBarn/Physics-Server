@@ -37,8 +37,9 @@ class Wheel extends GameObject {
                 .setRotation(new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2))
                 .setMass(0.1),
             this.axleBody
-        );       
-        
+        )
+        .setCollisionGroups(589823);
+
         let wheelLocalPosition = Vector3Static.addVectors(axleLocalPosition, new Vector3(this.side * this.width, 0, 0));
         let wheelLocalRotation = new Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
         let wheelGlobalPosition = GlobalMath.getGlobalPosition(parentPosition, parentRotation, wheelLocalPosition);
@@ -58,7 +59,8 @@ class Wheel extends GameObject {
                 .setRestitution(0.5)
                 .setFriction(2.5),
             this.wheelBody
-        );
+        )
+        .setCollisionGroups(262145);
 
         this.moterJoint = world.createImpulseJoint(
             RAPIER.JointData.revolute(new RAPIER.Vector3(0, 0, 0), new RAPIER.Vector3(0, 0, 0), new RAPIER.Vector3(1, 0, 0)),
@@ -67,6 +69,7 @@ class Wheel extends GameObject {
             true
         )
         this.moterJoint.configureMotorModel(RAPIER.MotorModel.ForceBased)
+
         // this.moterJoint.setLimits(0, 0);
 
     }
@@ -89,14 +92,16 @@ class Wheel extends GameObject {
 
 
         this.steerJoint.setLimits(minLimit, maxLimit);
-        this.steerJoint.configureMotorPosition(0, 100, 10)
+        this.steerJoint.configureMotorPosition(0, 10000.0, 100.0)
+        this.moterJoint.configureMotorPosition(0, 10000.0, 100.0)
+
     }
     setMotorVelocity(velocity) {
         console.log(velocity);
         this.moterJoint.configureMotorVelocity(velocity, 10.0); // 10.0 is the motor force
     }
     setSteeringAngle(targetSteer) {
-        this.steerJoint.configureMotorPosition(targetSteer, 100, 10)
+        this.steerJoint.configureMotorPosition(targetSteer, 10000.0, 100.0)
     }
     // Get the geometry of the wheel (position, radius, width, and rotation)
     getGeometry() {

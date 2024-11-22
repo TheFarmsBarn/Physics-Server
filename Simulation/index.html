@@ -65,11 +65,14 @@
         RAPIER.init().then(() => {
             let world = new RAPIER.World(new RAPIER.Vector3(0, -9.81, 0)); // Gravity
 
+
+            const groundBody = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
             // Add ground collider
             const groundCollider = world.createCollider(
                 RAPIER.ColliderDesc.cuboid(50, 0.1, 50), // Ground plane
-                world.createRigidBody(RAPIER.RigidBodyDesc.fixed())
-            );
+                groundBody
+            )
+            .setCollisionGroups(65542);
 
             // Create Kart
             const kartPosition = { x: 10, y: 5, z: 0 };
@@ -100,40 +103,8 @@
                 }
             });
 
-            // // Add chassis
-            // const chassisGeometry = new THREE.BoxGeometry(kart.chassis.width, kart.chassis.height, kart.chassis.length);
-            // const chassisMaterial = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff });
-            // const chassisMesh = new THREE.Mesh(chassisGeometry, chassisMaterial);
-            // chassisMesh.position.set(kartPosition.x, kartPosition.y, kartPosition.z);
-            // kartMesh.add(chassisMesh);
-
-            // // Add wheels
-            // kart.wheels.forEach(wheel => {
-            //     let axle = wheel.axleBody;
-            //     console.log(wheel);
-            //     const axleGeometry = new THREE.BoxGeometry(wheel.axleSize, wheel.axleSize, wheel.axleSize);
-            //     const axleMaterial = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff });
-            //     const axleMesh = new THREE.Mesh(axleGeometry, axleMaterial);
-            //     axleMesh.position.set(axle.x, axle.y, axle.z);
-            //     kartMesh.add(axleMesh);
-
-
-            //     // const wheelGeometry = new THREE.CylinderGeometry(wheel.radius, wheel.radius, wheel.width, 32);
-            //     // const wheelMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-            //     // const wheelMesh = new THREE.Mesh(wheelGeometry, wheelMaterial);
-            //     // wheelMesh.rotation.z = Math.PI / 2; // Align the wheel axis
-            //     // const wheelPos = wheel.getGeometry().position;
-            //     // wheelMesh.position.set(wheelPos.x, wheelPos.y, wheelPos.z);
-            //     // kartMesh.add(wheelMesh);
-            // });
-
-            // scene.add(kartMesh);
 
             const rapierDebugRenderer = new RapierDebugRenderer(scene, world)
-            // const gui = new GUI()
-            // gui.add(rapierDebugRenderer, 'enabled').name('Rapier Degug Renderer')
-
-            // Camera position
         
             camera.position.set(10, 5, 10);
             camera.lookAt(0, 0, 0);
@@ -142,35 +113,15 @@
             function animate() {
                 requestAnimationFrame(animate);
 
+                
                 // Physics update
                 world.step();
 
+                // console.log(groundCollider);
+                kart.updateGroundNormal(world, groundBody);
+
+
                 camera.lookAt(kart.chassis.chassisBody.translation().x, kart.chassis.chassisBody.translation().y, kart.chassis.chassisBody.translation().z);
-                // camera.lookAt(kart.frontRightWheel.wheelBody.translation().x, kart.frontRightWheel.wheelBody.translation().y, kart.frontRightWheel.wheelBody.translation().z);
-                // camera.lookAt(kart.frontRightWheel.axleBody.translation().x, kart.frontRightWheel.axleBody.translation().y, kart.frontRightWheel.axleBody.translation().z);
-
-                
-                // // Update chassis position and rotation
-                // const chassisPos = kart.chassis.chassisBody.translation();
-                // const chassisRot = kart.chassis.chassisBody.rotation();
-                // chassisMesh.position.set(chassisPos.x, chassisPos.y, chassisPos.z);
-                // chassisMesh.quaternion.set(chassisRot.x, chassisRot.y, chassisRot.z, chassisRot.w);
-
-                // Update wheel positions and rotations
-                // kart.wheels.forEach((wheel, index) => {
-                //     const wheelMesh = kartMesh.children[index + 1]; // Assuming chassis is first
-                //     const wheelPos = wheel.wheelBody.translation();
-                //     const wheelRot = wheel.wheelBody.rotation();
-                //     wheelMesh.position.set(wheelPos.x, wheelPos.y, wheelPos.z);
-                //     wheelMesh.quaternion.set(wheelRot.x, wheelRot.y, wheelRot.z, wheelRot.w);
-                // });
-
-                
-                // const wheelMesh = kartMesh.children[1]; // Assuming chassis is first
-                // const wheelPos = kart.wheelFRBody.translation();
-                // const wheelRot = kart.wheelFRBody.rotation();
-                // wheelMesh.position.set(wheelPos.x, wheelPos.y, wheelPos.z);
-                // wheelMesh.quaternion.set(wheelRot.x, wheelRot.y, wheelRot.z, wheelRot.w);
 
                 // Render the scene
                 renderer.render(scene, camera);
