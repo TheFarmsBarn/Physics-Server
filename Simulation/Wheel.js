@@ -61,13 +61,14 @@ class Wheel extends GameObject {
             this.wheelBody
         );
 
-        // this.wheelFRAxle.configureMotorModel(RAPIER.MotorModel.ForceBased);
-        world.createImpulseJoint(
+        this.moterJoint = world.createImpulseJoint(
             RAPIER.JointData.revolute(new RAPIER.Vector3(0, 0, 0), new RAPIER.Vector3(0, 0, 0), new RAPIER.Vector3(1, 0, 0)),
             this.axleBody,
             this.wheelBody,
             true
         )
+        this.moterJoint.configureMotorModel(RAPIER.MotorModel.ForceBased)
+
     }
     attachAxle(world, body, localPositionOnBody, rotationRestriction) {
         let axleLocalPosition = new Vector3( -1 * this.side  * this.axleSize * 2, 0, 0);
