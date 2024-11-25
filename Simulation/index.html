@@ -17,6 +17,9 @@
         import Kart from './Kart.js';
         import Chassis from './Chassis.js';
         import Wheel from './Wheel.js';
+        import { Vector3 } from './MathUtils/Vector3.js';
+        import { Quaternion } from './MathUtils/Quaternion.js';
+        const Vector3Static = new Vector3();
 
         class RapierDebugRenderer {
             mesh
@@ -64,15 +67,17 @@
         // Initialize Rapier
         RAPIER.init().then(() => {
             let world = new RAPIER.World(new RAPIER.Vector3(0, -9.81, 0)); // Gravity
-
+            world.numSolverIterations = 100;
 
             const groundBody = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
             // Add ground collider
             const groundCollider = world.createCollider(
-                RAPIER.ColliderDesc.cuboid(50, 0.1, 50), // Ground plane
+                RAPIER.ColliderDesc.cuboid(50, 0.1, 50)
+                    .setFriction(1)
+                    .setRestitution(0.1)
+                    .setCollisionGroups(65542), // Ground plane
                 groundBody
-            )
-            .setCollisionGroups(65542);
+            );
 
             // Create Kart
             const kartPosition = { x: 10, y: 5, z: 0 };
@@ -82,24 +87,34 @@
             // Add kart components to Three.js scene
             const kartMesh = new THREE.Object3D();
 
-            document.addEventListener('keydown', (event) => {
-                console.log
-                const steeringAngleIncrement = 0.1; // Adjust as needed
-                const velocityIncrement = 1.0;     // Adjust as needed
 
+            const desiredInputs = {
+                steeringAngle: 0,
+                velocity: 0,
+            };
+            document.addEventListener('keydown', (event) => {
                 switch (event.key) {
-                    case 'ArrowUp': // Increase velocity
-                        kart.setWheelVelocity(kart.currentVelocity + velocityIncrement);
+                    case 'ArrowUp': // Forward
+                        desiredInputs.velocity = 500;
                         break;
-                    case 'ArrowDown': // Decrease velocity
-                        kart.setWheelVelocity(kart.currentVelocity - velocityIncrement);
+                    case 'ArrowDown': // Backward
+                        desiredInputs.velocity = -200;
                         break;
-                    case 'ArrowLeft': // Turn left
-                        kart.setSteeringAngle(kart.currentSteeringAngle - steeringAngleIncrement);
+                    case 'ArrowLeft': // Steer left
+                        desiredInputs.steeringAngle = -0.6;
                         break;
-                    case 'ArrowRight': // Turn right
-                        kart.setSteeringAngle(kart.currentSteeringAngle + steeringAngleIncrement);
+                    case 'ArrowRight': // Steer right
+                        desiredInputs.steeringAngle = 0.6;
                         break;
+                }
+            });
+
+            document.addEventListener('keyup', (event) => {
+                // Reset values on key release
+                if (['ArrowUp', 'ArrowDown'].includes(event.key)) {
+                    desiredInputs.velocity = 0;
+                } else if (['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+                    desiredInputs.steeringAngle = 0;
                 }
             });
 
@@ -109,27 +124,49 @@
             camera.position.set(10, 5, 10);
             camera.lookAt(0, 0, 0);
 
-            // Animation loop
+
+            const clock = new THREE.Clock();
+            const fixedTimeStep = 1 / 60; // 60 Hz physics
+            let accumulator = 0;
+
             function animate() {
                 requestAnimationFrame(animate);
 
-                
-                // Physics update
-                world.step();
+                // Calculate elapsed time
+                const deltaTime = clock.getDelta();
 
-                // console.log(groundCollider);
-                kart.updateGroundNormal(world, groundBody);
+                // Accumulate time for physics simulation
+                accumulator += deltaTime;
 
+                // Step the physics world at a fixed rate
+                while (accumulator >= fixedTimeStep) {
+                    world.step(); // Rapier steps by its internal fixed timestep
 
-                camera.lookAt(kart.chassis.chassisBody.translation().x, kart.chassis.chassisBody.translation().y, kart.chassis.chassisBody.translation().z);
+                    // Apply inputs to the kart
+                    kart.setWheelVelocity(desiredInputs.velocity);
+                    kart.setSteeringAngle(desiredInputs.steeringAngle);
+
+                    // Update the kart's physics-related behavior
+                    kart.updateGroundNormal(new Vector3(0, 1, 0));
+
+                    accumulator -= fixedTimeStep;
+                }
 
                 // Render the scene
                 renderer.render(scene, camera);
 
-                rapierDebugRenderer.update()
+                // Update debug visuals
+                rapierDebugRenderer.update();
 
+                // Keep the camera focused on the kart
+                const chassisPos = kart.chassis.chassisBody.translation();
+                camera.lookAt(chassisPos.x, chassisPos.y, chassisPos.z);
             }
+
+
+            // Start the animation loop
             animate();
+
         });
 
 
